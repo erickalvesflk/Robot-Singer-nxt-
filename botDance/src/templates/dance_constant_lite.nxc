@@ -1,0 +1,95 @@
+#define FORCE 90
+#define BPM {%BPM%}
+#define D {%D%}
+struct Note
+{
+    int freq;
+    int d;
+};
+Note music[] =
+{
+    {%NOTES%}
+};
+
+void right_step(int ms)
+{
+    OnFwd(OUT_A, FORCE);
+    OnRev(OUT_B, FORCE);
+    Wait(ms);
+};
+void left_step(int ms)
+{
+    OnRev(OUT_A, FORCE);
+    OnFwd(OUT_B, FORCE);
+    Wait(ms);
+};
+void vibration(int n, int ms)
+{
+    float t = ms / (n*4.0);
+    repeat(n)
+    {
+        OnFwd(OUT_A, FORCE);
+        OnFwd(OUT_B, FORCE);
+
+        Wait(t);
+        Off(OUT_AB);
+        Wait(t);
+
+        OnRev(OUT_A, FORCE);
+        OnRev(OUT_B, FORCE);
+
+        Wait(t);
+        Off(OUT_AB);
+        Wait(t);
+    };
+};
+void do_presentation()
+{
+    bool to_right = true;
+    for(int i = 0; i < ArrayLen(music); ++i)
+    {
+        Note note = music[i];
+        float delta = note.d / D;
+
+        PlayToneEx(note.freq, (note.d / 10) + 300, 4, false);
+        if (note.d < 500)
+            Wait(note.d);
+        else
+            Wait(500);
+
+        if(delta < 0.8)
+        {
+            if(to_right)
+            {
+                to_right = false;
+                right_step(note.d);
+            }else{
+                to_right = true;
+                left_step(note.d);
+            };
+            continue;
+        };
+        if(delta > 1.2)
+        {
+            vibration(1,note.d);
+            continue;
+        }else{
+            if(to_right)
+            {
+                to_right = false;
+                right_step(note.d/2);
+                right_step(note.d/2);
+            }else{
+                to_right = true;
+                left_step(note.d/2);
+                left_step(note.d/2);
+            };
+        };
+    };
+};
+
+task main()
+{
+    do_presentation();
+    Off(OUT_AB);
+};

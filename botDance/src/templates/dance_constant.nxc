@@ -1,0 +1,147 @@
+#define FORCE 90
+#define BPM {%BPM%}
+#define D {%D%}
+struct Note
+{
+    int freq;
+    int d;
+};
+Note music[] =
+{
+    {%NOTES%}
+};
+
+void face(string m, int i, bool singing)
+{
+    TextOut(0, LCD_LINE1, "{%NAME%}", true);
+    TextOut(5, LCD_LINE3, " ##         ##", false);
+    string l4 = "";
+    string l5 = "";
+
+    if (singing)
+    {
+        if (m == "s") 
+        {
+            // curto
+            l4 = "####  ###  ####";
+            l5 = " ##  #   #  ##";
+            TextOut(5, LCD_LINE4, "####  ###  ####", false);
+            TextOut(5, LCD_LINE5, " ##  #   #  ##", false);
+            
+        }else if(m == "l"){
+            // curto
+            TextOut(5, LCD_LINE4, "#  #  ###  #  #", false);
+            TextOut(5, LCD_LINE5, "     #   #    ", false);
+
+        }else{
+            if(Random(2) < 1){
+                TextOut(5, LCD_LINE4, "#  #  ###  ####", false);
+                TextOut(5, LCD_LINE5, "     #   #  ##", false);
+            }else{
+                TextOut(5, LCD_LINE4, "####  ###  #  #", false);
+                TextOut(5, LCD_LINE5, " ##  #   #    ", false);               
+            }
+        };
+    }else{
+        TextOut(5, LCD_LINE3, " ##         ##", false);
+        TextOut(5, LCD_LINE4, "####       ####", false);
+        TextOut(5, LCD_LINE5, " ##  #   #  ##", false);
+    };
+    TextOut(5, LCD_LINE6, "      ###     ", false);
+    string perc = StrCat("Prog: ",NumToStr(i*100/ArrayLen(music)),"%");
+    TextOut(0, LCD_LINE8, perc, false);
+}
+
+task right_step()
+{
+    OnFwd(OUT_A, FORCE);
+    OnRev(OUT_B, FORCE);
+};
+task left_step()
+{
+    OnRev(OUT_A, FORCE);
+    OnFwd(OUT_B, FORCE);
+};
+int ms = 500;
+task vibration()
+{
+    float t = ms / 4.0;
+    repeat(1)
+    {
+        OnFwd(OUT_A, FORCE);
+        OnFwd(OUT_B, FORCE);
+
+        Wait(t);
+        Off(OUT_AB);
+        Wait(t);
+
+        OnRev(OUT_A, FORCE);
+        OnRev(OUT_B, FORCE);
+
+        Wait(t);
+        Off(OUT_AB);
+        Wait(t);
+    };
+};
+void do_presentation()
+{
+    bool to_right = true;
+    for(int i = 0; i < ArrayLen(music); ++i)
+    {
+        Note note = music[i];
+        float delta = note.d / D;
+
+        if(delta < 0.8){
+            face("s",i,true);
+        }else if(delta > 1.2){
+            face("l",i,true);
+        }else{
+            face("m",i,true);
+        };
+        
+        PlayToneEx(note.freq, (note.d / 10) + 300, 4, false);
+
+        if (note.d < 500)
+        {
+            Wait(note.d);
+        }else{
+            Wait(500);
+        };
+
+        face("m",i,false);
+        if(delta < 0.8)
+        {
+            if(to_right)
+            {
+                to_right = false;
+                StartTask(right_step);
+            }else{
+                to_right = true;
+                StartTask(left_step);
+            };
+            continue;
+        };
+        if(delta > 1.2){
+            ms = note.d;
+            StartTask(vibration);
+            continue;
+        }else{
+            if(to_right)
+            {
+                to_right = false;
+                StartTask(right_step);
+                StartTask(right_step);
+            }else{
+                to_right = true;
+                StartTask(left_step);
+                StartTask(left_step);
+            };
+        };
+    };
+};
+
+task main()
+{
+    do_presentation();
+    Off(OUT_AB);
+};
